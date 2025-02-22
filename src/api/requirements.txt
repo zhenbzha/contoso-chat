@@ -9,7 +9,7 @@ azure-monitor-opentelemetry-exporter
 aiohttp==3.9.5
 python-dotenv==1.0.1
 azure-cognitiveservices-speech==1.37.0
-prompty[azure]==0.1.24
+prompty[azure]==0.1.48
 jsonlines
 nbconvert
 pandas
