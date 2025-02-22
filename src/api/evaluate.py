@@ -18,7 +18,7 @@ from contoso_chat.chat_request import get_response
 # %%
 @trace
 def load_data():
-    data_path = "./evaluators/data.jsonl"
+    data_path = "./evaluators/data_simple.jsonl"
 
     df = pd.read_json(data_path, lines=True)
     df.head()
