@@ -75,6 +75,11 @@ jobs:
           inlineScript: |
             az account set --subscription ${{env.AZURE_SUBSCRIPTION_ID}}
 
+       
+      - name: debug env
+        run: |
+          echo ${{ env.AZURE_OPENAI_ENDPOINT }}
+
       - name: evaluate
         working-directory: ./src/api
         run: |
@@ -93,5 +98,5 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           echo "📊 Evaluation Results" >> $GITHUB_STEP_SUMMARY
-          cat evaluate/eval_results.md >> $GITHUB_STEP_SUMMARY
+          cat eval_results.md >> $GITHUB_STEP_SUMMARY
         
