@@ -74,12 +74,15 @@ jobs:
         with:
           inlineScript: |
             az account set --subscription ${{env.AZURE_SUBSCRIPTION_ID}}
-
        
       - name: debug env
         run: |
-          echo ${{ env.AZURE_OPENAI_ENDPOINT }}
+          echo "hello world"
+          echo "AZURE_OPENAI_ENDPOINT=${{ vars.AZURE_OPENAI_ENDPOINT }}"
 
+      # - name: Setup tmate session
+      #   uses: mxschmitt/action-tmate@v3
+        
       - name: evaluate
         working-directory: ./src/api
         run: |

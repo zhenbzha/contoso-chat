@@ -9,8 +9,7 @@ model:
     type: azure_openai
     azure_deployment: gpt-4
     api_version: 2023-07-01-preview
-    #azure_endpoint: ${ENV:AZURE_OPENAI_ENDPOINT}
-    azure_endpoint: "https://aoai-eotzupfjfzpvy.openai.azure.com/"
+    azure_endpoint: ${env:AZURE_OPENAI_ENDPOINT}
   parameters:
     max_tokens: 1500
 sample:
