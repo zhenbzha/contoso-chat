@@ -2,19 +2,22 @@ import os
 from pathlib import Path
 from fastapi import FastAPI
 from dotenv import load_dotenv
-from prompty.tracer import trace
 from prompty.core import PromptyStream, AsyncPromptyStream
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from tracing import init_tracing
-
+from prompty.tracer import trace, Tracer, console_tracer, PromptyTracer
 from contoso_chat.chat_request import get_response
 
 base = Path(__file__).resolve().parent
 
 load_dotenv()
-tracer = init_tracing()
+# Tracer.add("console", console_tracer)
+# json_tracer = PromptyTracer()
+# Tracer.add("PromptyTracer", json_tracer.tracer)
+
+tracer = init_tracing(local_tracing=False)
 
 app = FastAPI()
 
@@ -55,4 +58,8 @@ def create_response(question: str, customer_id: str, chat_history: str) -> dict:
     return result
 
 # TODO: fix open telemetry so it doesn't slow app so much
-FastAPIInstrumentor.instrument_app(app)
+#FastAPIInstrumentor.instrument_app(app)
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

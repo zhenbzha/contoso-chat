@@ -11,15 +11,6 @@ import prompty
 import prompty.azure
 from prompty.tracer import trace, Tracer, console_tracer, PromptyTracer
 
-
-# add console and json tracer:
-# this only has to be done once
-# at application startup
-Tracer.add("console", console_tracer)
-json_tracer = PromptyTracer()
-Tracer.add("PromptyTracer", json_tracer.tracer)
-
-
 @trace
 def get_customer(customerId: str) -> str:
     try:
@@ -58,6 +49,12 @@ def get_response(customerId, question, chat_history):
 
 if __name__ == "__main__":
     from tracing import init_tracing
+    # add console and json tracer:
+    # this only has to be done once
+    # at application startup
+    Tracer.add("console", console_tracer)
+    json_tracer = PromptyTracer()
+    Tracer.add("PromptyTracer", json_tracer.tracer)
 
     tracer = init_tracing(local_tracing=False)
     get_response(4, "What hiking jackets would you recommend?", [])

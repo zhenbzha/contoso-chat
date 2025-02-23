@@ -52,6 +52,7 @@ def init_tracing(local_tracing: bool = False):
 
         # Configure Azure Monitor as the Exporter
         app_insights = os.getenv("APPINSIGHTS_CONNECTIONSTRING")
+        print(f"app_insights=${app_insights}")
 
         # Add the Azure exporter to the tracer provider
 
