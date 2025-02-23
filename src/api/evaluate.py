@@ -100,6 +100,7 @@ def create_summary(df):
     mean_df = df.drop(["question", "context", "answer"], axis=1).mean()
     print("\nAverage scores:")
     print(mean_df)
+
     df.to_markdown('eval_results.md')
     with open('eval_results.md', 'a') as file:
         file.write("\n\nAverages scores:\n\n")
@@ -107,14 +108,22 @@ def create_summary(df):
 
     print("Results saved to result_evaluated.jsonl")
 
-# %%
-# create main funciton for python script
-if __name__ == "__main__":
+    average_of_metrics = mean_df.mean() 
+    print("\nAverage of averages:", average_of_metrics)
+    val = float(average_of_metrics)
+    return val > 2
+
+def evaluate_result():
    tracer = init_tracing(local_tracing=True)
    test_data_df = load_data()
    response_results = create_response_data(test_data_df)
    result_evaluated = evaluate()
-   create_summary(result_evaluated)
-
+   result = create_summary(result_evaluated)   
+   return result 
+# %%
+# create main funciton for python script
+if __name__ == "__main__":
+    result = evaluate_result()
+    print(result)
 
 

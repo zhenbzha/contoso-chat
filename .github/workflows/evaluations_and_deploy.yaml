@@ -1,12 +1,12 @@
 name: Evaluate
 
-# on:
-#   workflow_dispatch:
-#   push:
-#     # Run when commits are pushed to mainline branch (main or master)
-#     # Set this to the mainline branch you are using
-#     branches:
-#       - main
+on:
+  workflow_dispatch:
+  push:
+    # Run when commits are pushed to mainline branch (main or master)
+    # Set this to the mainline branch you are using
+    branches:
+      - main
 
 # Set up permissions for deploying with secretless Azure federated credentials
 # https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure?tabs=azure-portal%2Clinux#set-up-azure-login-with-openid-connect-authentication
@@ -76,12 +76,7 @@ jobs:
         with:
           inlineScript: |
             az account set --subscription ${{env.AZURE_SUBSCRIPTION_ID}}
-       
-      - name: debug env
-        run: |
-          echo "hello world"
-          echo "AZURE_OPENAI_ENDPOINT=${{ vars.AZURE_OPENAI_ENDPOINT }}"
-
+     
       # - name: Setup tmate session
       #   uses: mxschmitt/action-tmate@v3
         
@@ -89,8 +84,13 @@ jobs:
         id: evaluate
         working-directory: ./src/api
         run: |
-          python -m evaluate
-      
+          result=$(python -m evaluate | tail -n 1)          
+          echo "result=$result" >> $GITHUB_OUTPUT
+
+      - name: Print Evaluation Result
+        run: |
+          echo "Evaluation result: ${{ steps.evaluate.outputs.result }}"
+
       - name: Upload eval results as build artifact
         uses: actions/upload-artifact@v4
         with:
@@ -105,4 +105,87 @@ jobs:
 
           echo "📊 Evaluation Results" >> $GITHUB_STEP_SUMMARY
           cat eval_results.md >> $GITHUB_STEP_SUMMARY
-        
+
+
+  build_and_deploy:
+    runs-on: ubuntu-latest    
+    needs: evaluate
+    if: needs.evaluate.outputs.should_run == 'True'
+    env:
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+      AZURE_PRINCIPAL_TYPE: 'ServicePrincipal'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install azd
+        uses: Azure/setup-azd@v2
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+              
+      - name: Log in with Azure (Federated Credentials)
+        if: ${{ env.AZURE_CLIENT_ID != '' }}
+        run: |
+          azd auth login `
+            --client-id "$Env:AZURE_CLIENT_ID" `
+            --federated-credential-provider "github" `
+            --tenant-id "$Env:AZURE_TENANT_ID"
+        shell: pwsh
+
+      - name: Log in with Azure (Client Credentials)
+        if: ${{ env.AZURE_CREDENTIALS != '' }}
+        run: |
+          $info = $Env:AZURE_CREDENTIALS | ConvertFrom-Json -AsHashtable;
+          Write-Host "::add-mask::$($info.clientSecret)"
+
+          azd auth login `
+            --client-id "$($info.clientId)" `
+            --client-secret "$($info.clientSecret)" `
+            --tenant-id "$($info.tenantId)"
+        shell: pwsh
+        env:
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set az account
+        uses: azure/CLI@v2
+        with:
+          inlineScript: |
+            az account set --subscription ${{env.AZURE_SUBSCRIPTION_ID}}
+          
+      - name: Provision Infrastructure
+        run: azd provision --no-prompt
+        env:
+          AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
+          AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Application
+        run: azd deploy --no-prompt
+        env:
+          AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
+          AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      
+      - name: Build Deep Link
+        id: deep_link
+        run: |
+          echo "deep_link=https://portal.azure.com/#@/resource/subscriptions/${{ env.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-${{ vars.AZURE_ENV_NAME }}/overview" >> "$GITHUB_OUTPUT"
+
+      - name: GitHub Summary Step
+        if: ${{ success() }}
+        run: |
+          echo "🔗 [View Resources Deployed Here](${{ steps.deep_link.outputs.deep_link }})" >> $GITHUB_STEP_SUMMARY
+
